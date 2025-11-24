@@ -1,7 +1,7 @@
 # Tutorial: https://fastapi.tiangolo.com/tutorial/
 # Doc: http://127.0.0.1:8000/docs or http://127.0.0.1:8000/redoc
 from fastapi import FastAPI
-import asyncio
+import argparse
 from stub import result
 
 app = FastAPI()
@@ -20,4 +20,10 @@ async def get_result(query: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    
+    parser = argparse.ArgumentParser(description="Run the FastAPI app.")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the app on")
+    parser.add_argument("--port", type=int, default=443, help="Port to run the app on")
+    args = parser.parse_args()
+
+    uvicorn.run(app, host=args.host, port=args.port)
