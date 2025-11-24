@@ -183,8 +183,9 @@ jobs:
 
         echo "Dependency installation complete"
 
-        FASTAPI_PY="fastapi_main.py"
-        pkill -f ${FASTAPI_PY} || true
-        nohup sudo venv/bin/python ${FASTAPI_PY} --host 0.0.0.0 --port 80
+        FASTAPI_MODULE="fastapi_main:app"
+        sudo pkill -f $FASTAPI_MODULE || true
+        nohup venv/bin/python -m uvicorn $FASTAPI_MODULE --host 0.0.0.0 --port 80 > uvicorn.log 2>&1 &
         echo "Application restart complete"
+
         EOF
