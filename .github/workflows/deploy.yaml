@@ -183,7 +183,7 @@ jobs:
 
         echo "Dependency installation complete"
 
-        FASTAPI_PY="fastapi:app"
+        FASTAPI_PY="fastapi_main:app"
         pkill -f "uvicorn $FASTAPI_PY" || true
         nohup uvicorn $FASTAPI_PY --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
         echo "Application restart complete"
