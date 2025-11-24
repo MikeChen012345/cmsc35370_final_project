@@ -62,8 +62,51 @@ jobs:
         fi
         echo "Repository update complete"
 
+        # Ensure python3 exists; install with the instance package manager if missing
+        if command -v python3 >/dev/null 2>&1; then
+          echo "python3 found: $(python3 --version)"
+        else
+          echo "python3 not found — attempting to install"
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-venv python3-pip
+          elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y python3 python3-pip
+          elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y python3 python3-pip
+          else
+            echo "No supported package manager (apt/yum/dnf) found; cannot install python3" >&2
+            exit 1
+          fi
+        fi
+
+        # Ensure pip3 is available (try package manager first, otherwise use python -m pip)
+        if command -v pip3 >/dev/null 2>&1; then
+          echo "pip3 found: $(pip3 --version)"
+        else
+          echo "pip3 not found — attempting to install"
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y python3-pip
+          elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y python3-pip || true
+          elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y python3-pip || true
+          fi
+          # final fallback: try ensurepip / pip bootstrap
+          if command -v pip3 >/dev/null 2>&1; then
+            echo "pip3 installed successfully"
+          else
+            if command -v python3 >/dev/null 2>&1; then
+              python3 -m ensurepip --upgrade 2>/dev/null || true
+              python3 -m pip install --upgrade pip setuptools wheel || true
+            fi
+          fi
+        fi
+
         python3 -m pip install --upgrade pip
         pip3 install -r requirements.txt
+
         echo "Dependency installation complete"
 
         FASTAPI_PY="fastapi:app"
