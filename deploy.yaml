@@ -1,0 +1,77 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  python-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run code style checks
+      run: |
+        flake8 .
+    # - name: Run tests
+    #   run: |
+    #     pytest
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get EC2 Deployment Info
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+        HOST: ${{ secrets.EC2_HOST }}
+        USER: ${{ secrets.EC2_USER }}
+      run: |
+        echo "$PRIVATE_KEY" > github-ec2.pem && chmod 600 github-ec2.pem
+
+    - name: Deploy to EC2 (single SSH session)
+      env:
+        HOST: ${{ secrets.EC2_HOST }}
+        USER: ${{ secrets.EC2_USER }}
+      run: |
+        ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${USER}@${HOST} << 'EOF'
+        set -e
+        echo "Connected to EC2 instance"
+
+        REPO_NAME="cmsc35370_final_project"
+        REPO_URL="https://github.com/MikeChen012345/$REPO_NAME.git"
+        BRANCH="main"
+        REPO_DIR="$HOME/$REPO_NAME"
+
+        # fetch or clone
+        if [ -d "$REPO_DIR/.git" ]; then
+          cd "$REPO_DIR"
+          git fetch origin "$BRANCH"
+          git reset --hard origin/"$BRANCH"
+        else
+          git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+          cd "$REPO_DIR"
+        fi
+        echo "Repository update complete"
+
+        # install deps and restart app
+        python3 -m pip install --upgrade pip
+        pip3 install -r requirements.txt
+        echo "Dependency installation complete"
+
+        $FASTAPI_PY="fastapi:app"
+        pkill -f "uvicorn $FASTAPI_PY" || true
+        nohup uvicorn $FASTAPI_PY --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
+        echo "Application restart complete"
+        EOF
+      
