@@ -32,14 +32,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Get EC2 Deployment Info
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
-      run: |
-        echo "$PRIVATE_KEY" > github-ec2.pem && chmod 600 github-ec2.pem
-
     - name: Deploy to EC2 (single SSH session)
       env:
         HOST: ${{ secrets.EC2_HOST }}
