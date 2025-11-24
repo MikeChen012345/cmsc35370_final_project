@@ -32,12 +32,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Prepare EC2 SSH key
+      run: |
+        echo "${{ secrets.EC2_PRIVATE_KEY }}" > github-ec2.pem
+        chmod 600 github-ec2.pem
+
     - name: Deploy to EC2 (single SSH session)
       env:
         HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
+        SSH_USER: ${{ secrets.EC2_USER }}
       run: |
-        ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${USER}@${HOST} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i github-ec2.pem ${SSH_USER}@${HOST} << 'EOF'
         set -e
         echo "Connected to EC2 instance"
 
@@ -46,7 +51,6 @@ jobs:
         BRANCH="main"
         REPO_DIR="$HOME/$REPO_NAME"
 
-        # fetch or clone
         if [ -d "$REPO_DIR/.git" ]; then
           cd "$REPO_DIR"
           git fetch origin "$BRANCH"
@@ -57,14 +61,12 @@ jobs:
         fi
         echo "Repository update complete"
 
-        # install deps and restart app
         python3 -m pip install --upgrade pip
         pip3 install -r requirements.txt
         echo "Dependency installation complete"
 
-        $FASTAPI_PY="fastapi:app"
+        FASTAPI_PY="fastapi:app"
         pkill -f "uvicorn $FASTAPI_PY" || true
         nohup uvicorn $FASTAPI_PY --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
         echo "Application restart complete"
         EOF
-      
