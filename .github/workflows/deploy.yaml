@@ -118,13 +118,61 @@ jobs:
             sudo dnf install -y python3-venv || true
           fi
         fi
-
         echo "Python environment setup complete"
+        
+        # Start a virtual environment (create and handle ensurepip missing)
+        if [ -d "venv" ]; then
+          echo "Using existing virtual environment"
+        else
+          echo "Creating new virtual environment"
+          # try to create venv, capture stderr for diagnostics
+          if python3 -m venv venv 2>/tmp/venv-create.err; then
+            echo "Virtual environment created successfully"
+          else
+            echo "Failed to create virtual environment. Checking ensurepip..."
+            # check for ensurepip
+            if python3 -c "import ensurepip" >/dev/null 2>&1; then
+              echo "ensurepip is present but venv creation failed. See /tmp/venv-create.err for details."
+            else
+              echo "ensurepip module not available."
+              echo "On Debian/Ubuntu you may need to install the python3 venv package (example: python3.12-venv)."
+              echo "Attempting to install python3.12-venv and python3-venv with sudo..."
+              if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y python3.12-venv python3-venv || true
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y python3-venv || true
+              elif command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y python3-venv || true
+              fi
+            fi
+
+            # try again after possible install
+            if python3 -m venv venv 2>/tmp/venv-create2.err; then
+              echo "Virtual environment created after installing venv package"
+            else
+              echo "Virtual environment still failed to create."
+              echo "--- venv-create.err ---"
+              sed -n '1,200p' /tmp/venv-create.err || true
+              echo "--- venv-create2.err ---"
+              sed -n '1,200p' /tmp/venv-create2.err || true
+              echo ""
+              echo "If ensurepip was missing on Debian/Ubuntu, install the venv package manually, for example:"
+              echo "  sudo apt install python3.12-venv"
+              echo "Then recreate the virtual environment on the instance:"
+              echo "  python3 -m venv venv"
+              exit 1
+            fi
+          fi
+        fi
+        source venv/bin/activate
+        echo "Virtual environment setup complete"
 
         # Start a virtual environment
         if [ -d "venv" ]; then
           echo "Using existing virtual environment"
         else
+          echo "Creating new virtual environment"
           python3 -m venv venv
         fi
         source venv/bin/activate
