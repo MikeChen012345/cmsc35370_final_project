@@ -103,6 +103,22 @@ jobs:
             fi
           fi
         fi
+
+        # Ensure python-venv is available
+        if python3 -m venv --help >/dev/null 2>&1; then
+          echo "python3-venv module is available"
+        else
+          echo "python3-venv module not found — attempting to install"
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y python3-venv
+          elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y python3-venv || true
+          elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y python3-venv || true
+          fi
+        fi
+
         echo "Python environment setup complete"
 
         # Start a virtual environment
