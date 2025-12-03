@@ -185,7 +185,7 @@ jobs:
 
         FASTAPI_MODULE="fastapi_main:app"
         FASTAPI_LOG="uvicorn.log"
-        FASTAPI_PORT=80
+        FASTAPI_PORT=80 # Need sudo for ports < 1024, and requires certificates for HTTPS
         sudo pkill -f $FASTAPI_MODULE || true
         nohup sudo venv/bin/python -m uvicorn $FASTAPI_MODULE --host 0.0.0.0 --port $FASTAPI_PORT > $FASTAPI_LOG 2>&1 &
         echo "Application restart complete"

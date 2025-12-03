@@ -1,0 +1,87 @@
+stage: predict
+
+seed: 42
+model_id: lmsys/vicuna-7b-v1.5
+checkpoint: mindllm-base.ckpt
+resume_id: null
+group: null
+run_name: null
+
+lora: false
+lr: 0.001
+early_stop: false
+output_dir: outputs/
+
+defaults:
+  - encoder: neuro_informed_attn
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  accelerator: gpu
+  devices: 1
+  max_epochs: 2000
+  check_val_every_n_epoch: 1
+  accumulate_grad_batches: 8
+  gradient_clip_val: 0.5
+  use_distributed_sampler: false
+  logger:
+    _target_: lightning.pytorch.loggers.WandbLogger
+    name: ${run_name}
+    project: mindllm
+    save_dir: ${output_dir}
+    id: ${resume_id}
+    group: null
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: val/token_loss
+      filename: "{epoch:02d}"
+    - _target_: lightning.pytorch.callbacks.LearningRateMonitor
+      logging_interval: step
+    - _target_: src.utils.callbacks.WatchModel
+
+data:
+  _target_: src.dataset.fMRIInstructionDataModule
+  task: null
+  exclude: null
+  # If set, only these dataset sources will be used. Example: ["coco-caption"]
+  # Set to null to use all available sources.
+  select_sources: ["coco-caption", "coco-caption-previous", "paragraph-caption"]
+  whole_brain: false
+  num_workers: 0 # 4
+  batch_size: 8
+  mixup: false
+  subjects:
+    - 1
+    # - 2
+  train_samples: -1
+  nsd_version: 0
+  group_by_coco: true
+  split_val: false
+  split_seed: ${seed}
+
+agent:
+  # Enable the simple agent runner and configure the tool registry here.
+  enabled: true
+  # Default device for tools and model generation (overridable via CLI)
+  device: gpu
+  # Model generation control
+  max_steps: 5
+  max_new_tokens: 128
+  # System prompt given to the model to follow the JSON tool-protocol
+  system_prompt: "You are an assistant. When you want to call a tool, reply with JSON {\"action\":\"<tool>\", \"args\":{...}}. When finished, reply with {\"final_answer\":\"...\"}."
+  # Tool registry: enable/disable tools and provide default args for each tool.
+  tools:
+    echo:
+      enabled: true
+    predict_and_eval:
+      enabled: false
+      # defaults passed to scripts/predict_and_eval.run_predict_and_eval when called as a tool
+      out: outputs/predictions.pt
+      return_predictions: false
+
+metrics:
+  # If true, skip heavy COCO metrics that require external system dependencies
+  # (SPICE, METEOR, CIDEr). Recommended on Windows or CI where Java/extra jars are unavailable.
+  skip_heavy: true
+  # Where to save a metrics JSON when running predict+eval. If empty, will save next to predictions file.
+  output_metrics: ""
