@@ -23,3 +23,5 @@ torchvision==0.17.2
 wandb==0.17.7
 transformers==4.44.2
 random-fourier-features-pytorch==1.0.1
+langgraph==1.0.4
+langchain-core==1.1.2

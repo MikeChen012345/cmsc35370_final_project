@@ -43,11 +43,11 @@ data:
   _target_: src.dataset.fMRIInstructionDataModule
   task: null
   exclude: null
-  # If set, only these dataset sources will be used. Example: ["coco-caption"]
+  # If set, only these dataset sources will be used. Example: ["coco-caption", "coco-caption-previous", "paragraph-caption"]
   # Set to null to use all available sources.
-  select_sources: ["coco-caption", "coco-caption-previous", "paragraph-caption"]
+  select_sources: ["coco-caption"]
   whole_brain: false
-  num_workers: 0 # 4
+  num_workers: 0
   batch_size: 8
   mixup: false
   subjects:
@@ -55,7 +55,7 @@ data:
     # - 2
   train_samples: -1
   nsd_version: 0
-  group_by_coco: true
+  group_by_coco: true # if coco-caption-previous is used, this should be false; otherwise, set to true
   split_val: false
   split_seed: ${seed}
 
@@ -68,16 +68,31 @@ agent:
   max_steps: 5
   max_new_tokens: 128
   # System prompt given to the model to follow the JSON tool-protocol
-  system_prompt: "You are an assistant. When you want to call a tool, reply with JSON {\"action\":\"<tool>\", \"args\":{...}}. When finished, reply with {\"final_answer\":\"...\"}."
+  system_prompt: >-
+    You are an assistant for decoding the caption of a picture from fMRI embeddings.
+    You may access some example embedding-to-caption pairs in your memory to help you predict captions.
+    You may also need to incorporate checks for factual consistency and grammar based on your knowledge.
+    
+    Use the tools available and provide a final_answer for improved prediction when done.
+    When you want to call a tool, reply with JSON {"action":"<tool>", "args":{...}}.
+    When finished, always reply with {"final_answer":"..."} to indicate the end of the interaction.
+
+    ONLY use the tools that are registered and available to you. If none is provided, DO NOT invent any tools.
+    After receiving the tool output, you can choose to call another tool or provide the final answer.
+    Always ensure your final answer is relevant to the caption prediction task.
+  
   # Tool registry: enable/disable tools and provide default args for each tool.
   tools:
-    echo:
+    memory:
       enabled: true
-    predict_and_eval:
-      enabled: false
-      # defaults passed to scripts/predict_and_eval.run_predict_and_eval when called as a tool
-      out: outputs/predictions.pt
-      return_predictions: false
+      # Number of previous embeddings to remember in the conversation history
+      cross_subject: false # Whether to use the embedding of other subjects for memory search
+      k: 5
+    web_search:
+      enabled: true
+  # Multi-agent setup (currently only a critic agent is supported)
+  multi_agent: 
+    enbled: false
 
 metrics:
   # If true, skip heavy COCO metrics that require external system dependencies
